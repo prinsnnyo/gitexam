@@ -1,101 +1,221 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#define MAX 1000
 
-typedef struct { char id[20], vote[30]; } Voter;
-Voter v[MAX]; int n;
-char *cand[] = {"Alice Santos", "Bryan Cruz", "Carla Reyes"};
+#define MAX_VOTERS 1000
+#define FILE_NAME "votes.txt"
+#define MAX_CANDIDATES 3
 
-void load() {
-    FILE *f = fopen("votes.txt", "r"); n = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^\n]\n", v[n].id, v[n].vote) == 2) n++;
-    fclose(f);
+typedef struct {
+    char studentID[20];
+    char candidate[50];
+} Voter;
+
+Voter voters[MAX_VOTERS];
+int voterCount = 0;
+
+const char* candidates[MAX_CANDIDATES] = {
+    "Alice Santos",
+    "Bryan Cruz",
+    "Carla Reyes"
+};
+
+// 🔍 Load votes from file
+void loadVotes() {
+    FILE* file = fopen(FILE_NAME, "r");
+    if (!file) return;
+
+    voterCount = 0;
+    while (fscanf(file, "%[^|]|%[^\n]\n", voters[voterCount].studentID, voters[voterCount].candidate) == 2) {
+        voterCount++;
+    }
+
+    fclose(file);
 }
 
-void save() {
-    FILE *f = fopen("votes.txt", "w");
-    for (int i = 0; i < n; i++)
-        fprintf(f, "%s|%s\n", v[i].id, v[i].vote);
-    fclose(f);
+// 💾 Save votes to file
+void saveVotes() {
+    FILE* file = fopen(FILE_NAME, "w");
+    for (int i = 0; i < voterCount; i++) {
+        fprintf(file, "%s|%s\n", voters[i].studentID, voters[i].candidate);
+    }
+    fclose(file);
 }
 
-int exists(char *id) {
-    for (int i = 0; i < n; i++)
-        if (!strcmp(v[i].id, id)) return i;
+// ✅ Check if Student ID already voted
+int hasVoted(char* id) {
+    for (int i = 0; i < voterCount; i++) {
+        if (strcmp(voters[i].studentID, id) == 0) return i;
+    }
     return -1;
 }
 
-void vote() {
-    load(); Voter t;
-    printf("Student ID: "); gets(t.id);
-    if (exists(t.id) >= 0) { printf("Already voted.\n"); return; }
-    printf("Candidates:\n1. %s\n2. %s\n3. %s\nChoose: ", cand[0], cand[1], cand[2]);
-    int c; scanf("%d"); getchar();
-    if (c < 1 || c > 3) { printf("Invalid.\n"); return; }
-    strcpy(t.vote, cand[c - 1]);
-    FILE *f = fopen("votes.txt", "a");
-    fprintf(f, "%s|%s\n", t.id, t.vote);
-    fclose(f);
-    printf("Vote recorded for %s!\n", t.vote);
+// ➕ Register and vote
+void registerAndVote() {
+    char id[20];
+    int choice;
+
+    loadVotes();
+    printf("Enter Student ID: ");
+    scanf("%s", id);
+
+    if (hasVoted(id) != -1) {
+        printf("Error: You have already voted.\n");
+        return;
+    }
+
+    printf("Candidates:\n");
+    for (int i = 0; i < MAX_CANDIDATES; i++) {
+        printf("%d. %s\n", i + 1, candidates[i]);
+    }
+
+    printf("Enter Candidate Number: ");
+    scanf("%d", &choice);
+
+    if (choice < 1 || choice > MAX_CANDIDATES) {
+        printf("Error: Invalid candidate number.\n");
+        return;
+    }
+
+    strcpy(voters[voterCount].studentID, id);
+    strcpy(voters[voterCount].candidate, candidates[choice - 1]);
+    voterCount++;
+
+    saveVotes();
+    printf("Vote successfully recorded for %s!\n", candidates[choice - 1]);
 }
 
-void view() {
-    load(); if (!n) { printf("No votes.\n"); return; }
-    for (int i = 0; i < n; i++)
-        printf("%s -> %s\n", v[i].id, v[i].vote);
-}
-
-void update() {
-    load(); char id[20]; printf("ID to update: "); gets(id);
-    int i = exists(id);
-    if (i < 0) { printf("Not found.\n"); return; }
-    printf("New vote (1-3): "); int c; scanf("%d"); getchar();
-    if (c < 1 || c > 3) { printf("Invalid.\n"); return; }
-    strcpy(v[i].vote, cand[c - 1]); save(); printf("Updated!\n");
-}
-
-void del() {
-    load(); char id[20]; printf("ID to delete: "); gets(id);
-    int i = exists(id);
-    if (i < 0) { printf("Not found.\n"); return; }
-    for (int j = i; j < n - 1; j++) v[j] = v[j + 1];
-    n--; save(); printf("Deleted!\n");
-}
-
-void results() {
-    load(); int c[3] = {0};
-    for (int i = 0; i < n; i++)
-        for (int j = 0; j < 3; j++)
-            if (!strcmp(v[i].vote, cand[j])) c[j]++;
-    printf("Election Results:\n");
-    for (int i = 0; i < 3; i++)
-        printf("%s : %d votes\n", cand[i], c[i]);
-    int max = (c[0] > c[1]) ? ((c[0] > c[2]) ? 0 : 2) : ((c[1] > c[2]) ? 1 : 2);
-    printf("Winner: %s\n", cand[max]);
-}
-
-void admin() {
-    int ch;
-    while (1) {
-        printf("\nAdmin Menu:\n1.View 2.Update 3.Delete 4.Results 5.Exit\nChoose: ");
-        scanf("%d"); getchar();
-        if (ch == 1) view();
-        else if (ch == 2) update();
-        else if (ch == 3) del();
-        else if (ch == 4) results();
-        else break;
+// 📋 Admin: View all votes
+void viewAllVotes() {
+    loadVotes();
+    printf("\nStudent ID      Candidate\n------------------------------\n");
+    for (int i = 0; i < voterCount; i++) {
+        printf("%-15s %s\n", voters[i].studentID, voters[i].candidate);
     }
 }
 
+// ✏️ Admin: Update vote
+void updateVote() {
+    char id[20];
+    int choice;
+
+    loadVotes();
+    printf("Enter Student ID to update: ");
+    scanf("%s", id);
+
+    int index = hasVoted(id);
+    if (index == -1) {
+        printf("Error: Voter not found.\n");
+        return;
+    }
+
+    printf("Candidates:\n");
+    for (int i = 0; i < MAX_CANDIDATES; i++) {
+        printf("%d. %s\n", i + 1, candidates[i]);
+    }
+
+    printf("Enter new Candidate Number: ");
+    scanf("%d", &choice);
+
+    if (choice < 1 || choice > MAX_CANDIDATES) {
+        printf("Error: Invalid candidate number.\n");
+        return;
+    }
+
+    strcpy(voters[index].candidate, candidates[choice - 1]);
+    saveVotes();
+    printf("Vote updated successfully!\n");
+}
+
+// ❌ Admin: Delete voter record
+void deleteVoter() {
+    char id[20];
+    loadVotes();
+    printf("Enter Student ID to delete: ");
+    scanf("%s", id);
+
+    int index = hasVoted(id);
+    if (index == -1) {
+        printf("Error: Voter not found.\n");
+        return;
+    }
+
+    for (int i = index; i < voterCount - 1; i++) {
+        voters[i] = voters[i + 1];
+    }
+    voterCount--;
+
+    saveVotes();
+    printf("Voter record deleted successfully!\n");
+}
+
+// 🗳️ Admin: Display election results
+void displayResults() {
+    loadVotes();
+    int counts[MAX_CANDIDATES] = {0};
+
+    for (int i = 0; i < voterCount; i++) {
+        for (int j = 0; j < MAX_CANDIDATES; j++) {
+            if (strcmp(voters[i].candidate, candidates[j]) == 0) {
+                counts[j]++;
+            }
+        }
+    }
+
+    printf("\nElection Results:\n");
+    int maxVotes = 0;
+    for (int i = 0; i < MAX_CANDIDATES; i++) {
+        printf("%s : %d votes\n", candidates[i], counts[i]);
+        if (counts[i] > maxVotes) maxVotes = counts[i];
+    }
+
+    printf("-----------------------------\nWinner(s): ");
+    for (int i = 0; i < MAX_CANDIDATES; i++) {
+        if (counts[i] == maxVotes) {
+            printf("%s ", candidates[i]);
+        }
+    }
+    printf("\n");
+}
+
+// 🔐 Admin menu
+void adminMenu() {
+    int choice;
+    do {
+        printf("\nAdmin Menu:\n");
+        printf("1. View All Votes\n");
+        printf("2. Update Vote\n");
+        printf("3. Delete Voter Record\n");
+        printf("4. Display Election Results\n");
+        printf("5. Exit\n");
+        printf("Enter choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: viewAllVotes(); break;
+            case 2: updateVote(); break;
+            case 3: deleteVoter(); break;
+            case 4: displayResults(); break;
+        }
+    } while (choice != 5);
+}
+
+// 📌 Main menu
 int main() {
-    int ch;
-    while (1) {
-        printf("\nVoting System\n1.Vote 2.Admin 3.Exit\nChoose: ");
-        scanf("%d"); getchar();
-        if (ch == 1) vote();
-        else if (ch == 2) admin();
-        else break;
-    }
+    int choice;
+    do {
+        printf("\nWelcome to the Voting System\n");
+        printf("1. Register & Vote\n");
+        printf("2. Admin Login\n");
+        printf("3. Exit\n");
+        printf("Enter choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: registerAndVote(); break;
+            case 2: adminMenu(); break;
+        }
+    } while (choice != 3);
+
     return 0;
 }

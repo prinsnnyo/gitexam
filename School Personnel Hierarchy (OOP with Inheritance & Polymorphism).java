@@ -1,98 +1,220 @@
-#include <stdio.h>
-#include <string.h>
+import java.util.*;
 
-#define MAX 100
+// 🔹 Abstract Base Class: Person
+abstract class Person {
+    private String id;
+    private String name;
+    private int age;
 
-typedef struct {
-    char id[10], name[50];
-    int age, type; // 1=Teacher, 2=Student, 3=Admin
-    char extra[50]; // Subject / Course / Department
-    int yearLevel;  // Only for students
-    void (*introduce)();
-    void (*action)();
-} Person;
-
-Person people[MAX];
-int count = 0;
-
-void introTeacher() {
-    printf("I am %s, a Teacher of %s.\n", people[count].name, people[count].extra);
-}
-void gradeStudent() {
-    printf("%s has graded a student.\n", people[count].name);
-}
-
-void introStudent() {
-    printf("I am %s, a %d year student of %s.\n", people[count].name, people[count].yearLevel, people[count].extra);
-}
-void submitAssignment() {
-    printf("%s has submitted an assignment.\n", people[count].name);
-}
-
-void introAdmin() {
-    printf("I am %s, working in the %s department.\n", people[count].name, people[count].extra);
-}
-void processDocument() {
-    printf("%s has processed a document.\n", people[count].name);
-}
-
-int find(char *id) {
-    for (int i = 0; i < count; i++)
-        if (strcmp(people[i].id, id) == 0) return i;
-    return -1;
-}
-
-void addPerson() {
-    if (count >= MAX) return;
-    Person p;
-    printf("Type (1-Teacher, 2-Student, 3-Admin): "); scanf("%d", &p.type);
-    printf("ID: "); scanf("%s", p.id);
-    if (find(p.id) >= 0) { printf("ID exists.\n"); return; }
-    printf("Name: "); getchar(); gets(p.name);
-    printf("Age: "); scanf("%d", &p.age);
-    if (p.age <= 0) { printf("Invalid age.\n"); return; }
-
-    if (p.type == 1) {
-        printf("Subject: "); getchar(); gets(p.extra);
-        p.introduce = introTeacher;
-        p.action = gradeStudent;
-    } else if (p.type == 2) {
-        printf("Course: "); getchar(); gets(p.extra);
-        printf("Year Level: "); scanf("%d", &p.yearLevel);
-        p.introduce = introStudent;
-        p.action = submitAssignment;
-    } else if (p.type == 3) {
-        printf("Department: "); getchar(); gets(p.extra);
-        p.introduce = introAdmin;
-        p.action = processDocument;
+    public Person(String id, String name, int age) {
+        this.id = id;
+        this.name = name;
+        this.age = age;
     }
-    people[count++] = p;
-    printf("Personnel added successfully.\n");
+
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public int getAge() { return age; }
+
+    public abstract void introduce();
 }
 
-void viewAll() {
-    for (int i = 0; i < count; i++) {
-        printf("ID: %s - ", people[i].id);
-        people[i].introduce();
+// 🔹 Teacher Class
+class Teacher extends Person {
+    private String subject;
+
+    public Teacher(String id, String name, int age, String subject) {
+        super(id, name, age);
+        this.subject = subject;
+    }
+
+    @Override
+    public void introduce() {
+        System.out.println("ID: " + getId() + " - I am " + getName() + ", a Teacher of " + subject + ".");
+    }
+
+    public void gradeStudent() {
+        System.out.println(getName() + " has graded a student.");
     }
 }
 
-void roleAction() {
-    char id[10]; printf("Enter ID: "); scanf("%s", id);
-    int i = find(id);
-    if (i < 0) { printf("Not found.\n"); return; }
-    people[i].action();
+// 🔹 Student Class
+class Student extends Person {
+    private String course;
+    private int yearLevel;
+
+    public Student(String id, String name, int age, String course, int yearLevel) {
+        super(id, name, age);
+        this.course = course;
+        this.yearLevel = yearLevel;
+    }
+
+    @Override
+    public void introduce() {
+        System.out.println("ID: " + getId() + " - I am " + getName() + ", a " + yearLevel + "nd year student of " + course + ".");
+    }
+
+    public void submitAssignment() {
+        System.out.println(getName() + " has submitted an assignment.");
+    }
 }
 
-int main() {
-    int ch;
-    while (1) {
-        printf("\n1.Add 2.View All 3.Role Action 4.Exit\nChoose: ");
-        scanf("%d", &ch);
-        if (ch == 1) addPerson();
-        else if (ch == 2) viewAll();
-        else if (ch == 3) roleAction();
-        else break;
+// 🔹 AdminStaff Class
+class AdminStaff extends Person {
+    private String department;
+
+    public AdminStaff(String id, String name, int age, String department) {
+        super(id, name, age);
+        this.department = department;
     }
-    return 0;
+
+    @Override
+    public void introduce() {
+        System.out.println("ID: " + getId() + " - I am " + getName() + ", working in the " + department + " department.");
+    }
+
+    public void processDocument() {
+        System.out.println(getName() + " has processed a document.");
+    }
+}
+
+// 🔹 PersonnelManager Class
+class PersonnelManager {
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final List<Person> personnelList = new ArrayList<>();
+
+    public static void main(String[] args) {
+        int choice;
+        do {
+            System.out.println("\n===== School Personnel Management System =====");
+            System.out.println("1. Add Teacher");
+            System.out.println("2. Add Student");
+            System.out.println("3. Add Admin Staff");
+            System.out.println("4. View All Personnel");
+            System.out.println("5. Role-Specific Action");
+            System.out.println("6. Exit");
+            System.out.print("Enter choice: ");
+            choice = scanner.nextInt();
+            scanner.nextLine(); // clear newline
+
+            switch (choice) {
+                case 1 -> addTeacher();
+                case 2 -> addStudent();
+                case 3 -> addAdmin();
+                case 4 -> viewAll();
+                case 5 -> roleAction();
+            }
+        } while (choice != 6);
+    }
+
+    private static boolean isUniqueID(String id) {
+        return personnelList.stream().noneMatch(p -> p.getId().equals(id));
+    }
+
+    private static void addTeacher() {
+        System.out.print("ID: ");
+        String id = scanner.nextLine();
+        if (!isUniqueID(id)) {
+            System.out.println("Error: ID already exists.");
+            return;
+        }
+
+        System.out.print("Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Age: ");
+        int age = scanner.nextInt();
+        scanner.nextLine();
+        if (age <= 0) {
+            System.out.println("Error: Age must be positive.");
+            return;
+        }
+
+        System.out.print("Subject: ");
+        String subject = scanner.nextLine();
+
+        personnelList.add(new Teacher(id, name, age, subject));
+        System.out.println("Teacher added successfully.");
+    }
+
+    private static void addStudent() {
+        System.out.print("ID: ");
+        String id = scanner.nextLine();
+        if (!isUniqueID(id)) {
+            System.out.println("Error: ID already exists.");
+            return;
+        }
+
+        System.out.print("Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Age: ");
+        int age = scanner.nextInt();
+        scanner.nextLine();
+        if (age <= 0) {
+            System.out.println("Error: Age must be positive.");
+            return;
+        }
+
+        System.out.print("Course: ");
+        String course = scanner.nextLine();
+        System.out.print("Year Level: ");
+        int year = scanner.nextInt();
+        scanner.nextLine();
+
+        personnelList.add(new Student(id, name, age, course, year));
+        System.out.println("Student added successfully.");
+    }
+
+    private static void addAdmin() {
+        System.out.print("ID: ");
+        String id = scanner.nextLine();
+        if (!isUniqueID(id)) {
+            System.out.println("Error: ID already exists.");
+            return;
+        }
+
+        System.out.print("Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Age: ");
+        int age = scanner.nextInt();
+        scanner.nextLine();
+        if (age <= 0) {
+            System.out.println("Error: Age must be positive.");
+            return;
+        }
+
+        System.out.print("Department: ");
+        String dept = scanner.nextLine();
+
+        personnelList.add(new AdminStaff(id, name, age, dept));
+        System.out.println("Admin Staff added successfully.");
+    }
+
+    private static void viewAll() {
+        if (personnelList.isEmpty()) {
+            System.out.println("No personnel records found.");
+            return;
+        }
+        System.out.println("\nPersonnel List:");
+        for (Person p : personnelList) {
+            p.introduce();
+        }
+    }
+
+    private static void roleAction() {
+        System.out.print("Enter Personnel ID: ");
+        String id = scanner.nextLine();
+        for (Person p : personnelList) {
+            if (p.getId().equals(id)) {
+                if (p instanceof Teacher t) {
+                    t.gradeStudent();
+                } else if (p instanceof Student s) {
+                    s.submitAssignment();
+                } else if (p instanceof AdminStaff a) {
+                    a.processDocument();
+                }
+                return;
+            }
+        }
+        System.out.println("Error: ID not found.");
+    }
 }

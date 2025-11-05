@@ -1,111 +1,240 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
-#define MAX 1000
+#define MAX_STUDENTS 100
+#define MAX_LINE 200
+#define FILE_NAME "students.txt"
 
 typedef struct {
-    char id[10], name[100], course[50], year[5], gpa[6];
+    char studentID[10];
+    char name[50];
+    char course[30];
+    int yearLevel;
+    float gpa;
 } Student;
 
-Student s[MAX];
-int count = 0;
+Student students[MAX_STUDENTS];
+int studentCount = 0;
 
-void load() {
-    FILE *f = fopen("students.txt", "r");
-    count = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^|]|%[^|]|%[^|]|%[^\n]\n", s[count].id, s[count].name,
-           s[count].course, s[count].year, s[count].gpa) == 5) count++;
-    fclose(f);
+// 🔍 Load students from file
+void loadStudents() {
+    FILE* file = fopen(FILE_NAME, "r");
+    if (!file) return;
+
+    char line[MAX_LINE];
+    studentCount = 0;
+
+    while (fgets(line, sizeof(line), file)) {
+        sscanf(line, "%[^|]|%[^|]|%[^|]|%d|%f",
+               students[studentCount].studentID,
+               students[studentCount].name,
+               students[studentCount].course,
+               &students[studentCount].yearLevel,
+               &students[studentCount].gpa);
+        studentCount++;
+    }
+
+    fclose(file);
 }
 
-void save() {
-    FILE *f = fopen("students.txt", "w");
-    for (int i = 0; i < count; i++)
-        fprintf(f, "%s|%s|%s|%s|%s\n", s[i].id, s[i].name, s[i].course, s[i].year, s[i].gpa);
-    fclose(f);
+// 💾 Save students to file
+void saveStudents() {
+    FILE* file = fopen(FILE_NAME, "w");
+    for (int i = 0; i < studentCount; i++) {
+        fprintf(file, "%s|%s|%s|%d|%.2f\n",
+                students[i].studentID,
+                students[i].name,
+                students[i].course,
+                students[i].yearLevel,
+                students[i].gpa);
+    }
+    fclose(file);
 }
 
-void add() {
-    load();
-    Student t;
-    printf("StudentID: "); gets(t.id);
-    for (int i = 0; i < count; i++)
-        if (!strcmp(s[i].id, t.id)) { printf("ID exists.\n"); return; }
-    printf("Name: "); gets(t.name);
-    printf("Course: "); gets(t.course);
-    printf("YearLevel: "); gets(t.year);
-    printf("GPA: "); gets(t.gpa);
-    float g = atof(t.gpa);
-    if (g < 0 || g > 5) { printf("Invalid GPA.\n"); return; }
-    FILE *f = fopen("students.txt", "a");
-    fprintf(f, "%s|%s|%s|%s|%s\n", t.id, t.name, t.course, t.year, t.gpa);
-    fclose(f);
-    printf("Record added!\n");
+// ✅ Validate GPA
+int isValidGPA(float gpa) {
+    return gpa >= 0.00 && gpa <= 5.00;
 }
 
-void view() {
-    load();
-    if (count == 0) { printf("No records.\n"); return; }
-    printf("ID Name Course Year GPA\n-------------------------------\n");
-    for (int i = 0; i < count; i++)
-        printf("%s %s %s %s %s\n", s[i].id, s[i].name, s[i].course, s[i].year, s[i].gpa);
+// 🔍 Check if StudentID is unique
+int isUniqueID(char* id) {
+    for (int i = 0; i < studentCount; i++) {
+        if (strcmp(students[i].studentID, id) == 0) return 0;
+    }
+    return 1;
 }
 
-void update() {
-    load();
-    char id[10]; printf("StudentID to update: "); gets(id);
-    for (int i = 0; i < count; i++) {
-        if (!strcmp(s[i].id, id)) {
-            printf("New Name: "); gets(s[i].name);
-            printf("New Course: "); gets(s[i].course);
-            printf("New YearLevel: "); gets(s[i].year);
-            printf("New GPA: "); gets(s[i].gpa);
-            float g = atof(s[i].gpa);
-            if (g < 0 || g > 5) { printf("Invalid GPA.\n"); return; }
-            save(); printf("Record updated!\n"); return;
+// ➕ Add student
+void addStudent() {
+    Student newStudent;
+    printf("Enter StudentID: ");
+    scanf("%s", newStudent.studentID);
+    if (!isUniqueID(newStudent.studentID)) {
+        printf("Error: StudentID already exists.\n");
+        return;
+    }
+
+    getchar(); // clear newline
+    printf("Enter Name: ");
+    fgets(newStudent.name, sizeof(newStudent.name), stdin);
+    newStudent.name[strcspn(newStudent.name, "\n")] = '\0';
+
+    printf("Enter Course: ");
+    fgets(newStudent.course, sizeof(newStudent.course), stdin);
+    newStudent.course[strcspn(newStudent.course, "\n")] = '\0';
+
+    printf("Enter YearLevel: ");
+    scanf("%d", &newStudent.yearLevel);
+
+    printf("Enter GPA: ");
+    scanf("%f", &newStudent.gpa);
+    if (!isValidGPA(newStudent.gpa)) {
+        printf("Error: Invalid GPA.\n");
+        return;
+    }
+
+    students[studentCount++] = newStudent;
+    saveStudents();
+    printf("Record added successfully!\n");
+}
+
+// 📋 View all students
+void viewStudents() {
+    loadStudents();
+    if (studentCount == 0) {
+        printf("No records found.\n");
+        return;
+    }
+
+    printf("\nStudentID Name                Course     Year GPA\n");
+    printf("------------------------------------------------------\n");
+    for (int i = 0; i < studentCount; i++) {
+        printf("%-10s %-20s %-10s %-4d %.2f\n",
+               students[i].studentID,
+               students[i].name,
+               students[i].course,
+               students[i].yearLevel,
+               students[i].gpa);
+    }
+}
+
+// ✏️ Update student
+void updateStudent() {
+    char id[10];
+    loadStudents();
+    printf("Enter StudentID to update: ");
+    scanf("%s", id);
+
+    for (int i = 0; i < studentCount; i++) {
+        if (strcmp(students[i].studentID, id) == 0) {
+            getchar();
+            printf("Enter new Name: ");
+            fgets(students[i].name, sizeof(students[i].name), stdin);
+            students[i].name[strcspn(students[i].name, "\n")] = '\0';
+
+            printf("Enter new Course: ");
+            fgets(students[i].course, sizeof(students[i].course), stdin);
+            students[i].course[strcspn(students[i].course, "\n")] = '\0';
+
+            printf("Enter new YearLevel: ");
+            scanf("%d", &students[i].yearLevel);
+
+            printf("Enter new GPA: ");
+            scanf("%f", &students[i].gpa);
+            if (!isValidGPA(students[i].gpa)) {
+                printf("Error: Invalid GPA.\n");
+                return;
+            }
+
+            saveStudents();
+            printf("Record updated successfully!\n");
+            return;
         }
     }
+
     printf("StudentID not found.\n");
 }
 
-void del() {
-    load();
-    char id[10]; printf("StudentID to delete: "); gets(id);
-    for (int i = 0; i < count; i++) {
-        if (!strcmp(s[i].id, id)) {
-            for (int j = i; j < count - 1; j++) s[j] = s[j + 1];
-            count--; save(); printf("Record deleted!\n"); return;
+// ❌ Delete student
+void deleteStudent() {
+    char id[10];
+    loadStudents();
+    printf("Enter StudentID to delete: ");
+    scanf("%s", id);
+
+    int found = 0;
+    for (int i = 0; i < studentCount; i++) {
+        if (strcmp(students[i].studentID, id) == 0) {
+            for (int j = i; j < studentCount - 1; j++) {
+                students[j] = students[j + 1];
+            }
+            studentCount--;
+            found = 1;
+            break;
         }
     }
-    printf("StudentID not found.\n");
+
+    if (found) {
+        saveStudents();
+        printf("Record deleted successfully!\n");
+    } else {
+        printf("StudentID not found.\n");
+    }
 }
 
-void search() {
-    load();
-    char q[100]; printf("Search Name/Course: "); gets(q);
-    int f = 0;
-    for (int i = 0; i < count; i++) {
-        if (strstr(s[i].name, q) || strstr(s[i].course, q)) {
-            printf("%s | %s | %s | %s | %s\n", s[i].id, s[i].name, s[i].course, s[i].year, s[i].gpa);
-            f = 1;
+// 🔍 Search student
+void searchStudent() {
+    char keyword[50];
+    int found = 0;
+    loadStudents();
+    getchar();
+    printf("Enter Name or Course to search: ");
+    fgets(keyword, sizeof(keyword), stdin);
+    keyword[strcspn(keyword, "\n")] = '\0';
+
+    for (int i = 0; i < studentCount; i++) {
+        if (strstr(students[i].name, keyword) || strstr(students[i].course, keyword)) {
+            printf("%s | %s | %s | %d | %.2f\n",
+                   students[i].studentID,
+                   students[i].name,
+                   students[i].course,
+                   students[i].yearLevel,
+                   students[i].gpa);
+            found = 1;
         }
     }
-    if (!f) printf("No match.\n");
+
+    if (!found) {
+        printf("No matching records found.\n");
+    }
 }
 
+// 📌 Main menu
 int main() {
-    int c;
-    while (1) {
-        printf("\n1.Add 2.View 3.Update 4.Delete 5.Search 6.Exit\nChoose: ");
-        scanf("%d", &c); getchar();
-        if (c == 1) add();
-        else if (c == 2) view();
-        else if (c == 3) update();
-        else if (c == 4) del();
-        else if (c == 5) search();
-        else if (c == 6) break;
-    }
+    int choice;
+
+    do {
+        printf("\n===== Student Records Management =====\n");
+        printf("1. Add Student Record\n");
+        printf("2. View All Records\n");
+        printf("3. Update Record\n");
+        printf("4. Delete Record\n");
+        printf("5. Search Record\n");
+        printf("6. Exit\n");
+        printf("Choose an option: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: addStudent(); break;
+            case 2: viewStudents(); break;
+            case 3: updateStudent(); break;
+            case 4: deleteStudent(); break;
+            case 5: searchStudent(); break;
+        }
+
+    } while (choice != 6);
+
     return 0;
 }

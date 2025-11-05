@@ -1,120 +1,255 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
 
-#define MAX 1000
+#define MAX_BOOKS 1000
+#define MAX_LINE 200
+#define FILE_NAME "books.txt"
 
 typedef struct {
-    char id[10], title[100], author[100], year[6], status[10];
+    char bookID[10];
+    char title[50];
+    char author[50];
+    int year;
+    char status[10];
 } Book;
 
-Book books[MAX];
-int count = 0;
+Book books[MAX_BOOKS];
+int bookCount = 0;
 
-void load() {
-    FILE *f = fopen("books.txt", "r");
-    count = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^|]|%[^|]|%[^|]|%[^\n]\n", books[count].id, books[count].title,
-           books[count].author, books[count].year, books[count].status) == 5) count++;
-    fclose(f);
-}
+// 🔍 Load books from file
+void loadBooks() {
+    FILE* file = fopen(FILE_NAME, "r");
+    if (!file) return;
 
-void save() {
-    FILE *f = fopen("books.txt", "w");
-    for (int i = 0; i < count; i++)
-        fprintf(f, "%s|%s|%s|%s|%s\n", books[i].id, books[i].title, books[i].author,
-                books[i].year, books[i].status);
-    fclose(f);
-}
+    char line[MAX_LINE];
+    bookCount = 0;
 
-void add() {
-    load();
-    Book b;
-    printf("BookID: "); gets(b.id);
-    for (int i = 0; i < count; i++)
-        if (!strcmp(books[i].id, b.id)) { printf("ID exists.\n"); return; }
-    printf("Title: "); gets(b.title);
-    printf("Author: "); gets(b.author);
-    printf("Year: "); gets(b.year);
-    int y = atoi(b.year);
-    if (y < 1500 || y > 2025) { printf("Invalid year.\n"); return; }
-    printf("Status (Available/Borrowed): "); gets(b.status);
-    if (strcmp(b.status, "Available") && strcmp(b.status, "Borrowed")) {
-        printf("Invalid status.\n"); return;
+    while (fgets(line, sizeof(line), file)) {
+        sscanf(line, "%[^|]|%[^|]|%[^|]|%d|%[^|\n]", 
+               books[bookCount].bookID, 
+               books[bookCount].title, 
+               books[bookCount].author, 
+               &books[bookCount].year, 
+               books[bookCount].status);
+        bookCount++;
     }
-    FILE *f = fopen("books.txt", "a");
-    fprintf(f, "%s|%s|%s|%s|%s\n", b.id, b.title, b.author, b.year, b.status);
-    fclose(f);
-    printf("Book added!\n");
+
+    fclose(file);
 }
 
-void view() {
-    load();
-    if (count == 0) { printf("No records.\n"); return; }
-    printf("ID Title Author Year Status\n-------------------------------\n");
-    for (int i = 0; i < count; i++)
-        printf("%s %s %s %s %s\n", books[i].id, books[i].title, books[i].author,
-               books[i].year, books[i].status);
+// 💾 Save books to file
+void saveBooks() {
+    FILE* file = fopen(FILE_NAME, "w");
+    for (int i = 0; i < bookCount; i++) {
+        fprintf(file, "%s|%s|%s|%d|%s\n", 
+                books[i].bookID, 
+                books[i].title, 
+                books[i].author, 
+                books[i].year, 
+                books[i].status);
+    }
+    fclose(file);
 }
 
-void update() {
-    load();
-    char id[10]; printf("BookID to update: "); gets(id);
-    for (int i = 0; i < count; i++) {
-        if (!strcmp(books[i].id, id)) {
-            printf("New Title: "); gets(books[i].title);
-            printf("New Author: "); gets(books[i].author);
-            printf("New Year: "); gets(books[i].year);
-            int y = atoi(books[i].year);
-            if (y < 1500 || y > 2025) { printf("Invalid year.\n"); return; }
-            printf("New Status: "); gets(books[i].status);
-            if (strcmp(books[i].status, "Available") && strcmp(books[i].status, "Borrowed")) {
-                printf("Invalid status.\n"); return;
+// ✅ Validate year
+int isValidYear(int year) {
+    int currentYear = 2025;
+    return year >= 1500 && year <= currentYear;
+}
+
+// ✅ Validate status
+int isValidStatus(char* status) {
+    return strcmp(status, "Available") == 0 || strcmp(status, "Borrowed") == 0;
+}
+
+// 🔍 Check if BookID is unique
+int isUniqueID(char* id) {
+    for (int i = 0; i < bookCount; i++) {
+        if (strcmp(books[i].bookID, id) == 0) return 0;
+    }
+    return 1;
+}
+
+// ➕ Add book
+void addBook() {
+    Book newBook;
+    printf("Enter BookID: ");
+    scanf("%s", newBook.bookID);
+    if (!isUniqueID(newBook.bookID)) {
+        printf("Error: BookID already exists.\n");
+        return;
+    }
+
+    getchar(); // clear newline
+    printf("Enter Title: ");
+    fgets(newBook.title, sizeof(newBook.title), stdin);
+    newBook.title[strcspn(newBook.title, "\n")] = '\0';
+
+    printf("Enter Author: ");
+    fgets(newBook.author, sizeof(newBook.author), stdin);
+    newBook.author[strcspn(newBook.author, "\n")] = '\0';
+
+    printf("Enter Year: ");
+    scanf("%d", &newBook.year);
+    if (!isValidYear(newBook.year)) {
+        printf("Error: Invalid year.\n");
+        return;
+    }
+
+    printf("Enter Status (Available/Borrowed): ");
+    scanf("%s", newBook.status);
+    if (!isValidStatus(newBook.status)) {
+        printf("Error: Invalid status.\n");
+        return;
+    }
+
+    books[bookCount++] = newBook;
+    saveBooks();
+    printf("Book added successfully!\n");
+}
+
+// 📋 View all books
+void viewBooks() {
+    loadBooks();
+    if (bookCount == 0) {
+        printf("No books found.\n");
+        return;
+    }
+
+    printf("\nBookID  Title                     Author              Year  Status\n");
+    printf("---------------------------------------------------------------------\n");
+    for (int i = 0; i < bookCount; i++) {
+        printf("%-7s %-25s %-18s %-5d %-10s\n", 
+               books[i].bookID, 
+               books[i].title, 
+               books[i].author, 
+               books[i].year, 
+               books[i].status);
+    }
+}
+
+// ✏️ Update book
+void updateBook() {
+    char id[10];
+    loadBooks();
+    printf("Enter BookID to update: ");
+    scanf("%s", id);
+
+    for (int i = 0; i < bookCount; i++) {
+        if (strcmp(books[i].bookID, id) == 0) {
+            getchar();
+            printf("Enter new Title: ");
+            fgets(books[i].title, sizeof(books[i].title), stdin);
+            books[i].title[strcspn(books[i].title, "\n")] = '\0';
+
+            printf("Enter new Author: ");
+            fgets(books[i].author, sizeof(books[i].author), stdin);
+            books[i].author[strcspn(books[i].author, "\n")] = '\0';
+
+            printf("Enter new Year: ");
+            scanf("%d", &books[i].year);
+            if (!isValidYear(books[i].year)) {
+                printf("Error: Invalid year.\n");
+                return;
             }
-            save(); printf("Book updated!\n"); return;
+
+            printf("Enter new Status: ");
+            scanf("%s", books[i].status);
+            if (!isValidStatus(books[i].status)) {
+                printf("Error: Invalid status.\n");
+                return;
+            }
+
+            saveBooks();
+            printf("Book updated successfully!\n");
+            return;
         }
     }
+
     printf("BookID not found.\n");
 }
 
-void del() {
-    load();
-    char id[10]; printf("BookID to delete: "); gets(id);
-    for (int i = 0; i < count; i++) {
-        if (!strcmp(books[i].id, id)) {
-            for (int j = i; j < count - 1; j++) books[j] = books[j + 1];
-            count--; save(); printf("Book deleted!\n"); return;
-        }
-    }
-    printf("BookID not found.\n");
-}
+// ❌ Delete book
+void deleteBook() {
+    char id[10];
+    loadBooks();
+    printf("Enter BookID to delete: ");
+    scanf("%s", id);
 
-void search() {
-    load();
-    char q[100]; printf("Search Title/Author: "); gets(q);
     int found = 0;
-    for (int i = 0; i < count; i++) {
-        if (strstr(books[i].title, q) || strstr(books[i].author, q)) {
-            printf("%s | %s | %s | %s | %s\n", books[i].id, books[i].title,
-                   books[i].author, books[i].year, books[i].status);
+    for (int i = 0; i < bookCount; i++) {
+        if (strcmp(books[i].bookID, id) == 0) {
+            for (int j = i; j < bookCount - 1; j++) {
+                books[j] = books[j + 1];
+            }
+            bookCount--;
+            found = 1;
+            break;
+        }
+    }
+
+    if (found) {
+        saveBooks();
+        printf("Book deleted successfully!\n");
+    } else {
+        printf("BookID not found.\n");
+    }
+}
+
+// 🔍 Search book
+void searchBook() {
+    char keyword[50];
+    int found = 0;
+    loadBooks();
+    getchar();
+    printf("Enter Title or Author to search: ");
+    fgets(keyword, sizeof(keyword), stdin);
+    keyword[strcspn(keyword, "\n")] = '\0';
+
+    for (int i = 0; i < bookCount; i++) {
+        if (strstr(books[i].title, keyword) || strstr(books[i].author, keyword)) {
+            printf("%s | %s | %s | %d | %s\n", 
+                   books[i].bookID, 
+                   books[i].title, 
+                   books[i].author, 
+                   books[i].year, 
+                   books[i].status);
             found = 1;
         }
     }
-    if (!found) printf("No match.\n");
+
+    if (!found) {
+        printf("No matching books found.\n");
+    }
 }
 
+// 📌 Main menu
 int main() {
-    int c;
-    while (1) {
-        printf("\n1.Add 2.View 3.Update 4.Delete 5.Search 6.Exit\nChoose: ");
-        scanf("%d", &c); getchar();
-        if (c == 1) add();
-        else if (c == 2) view();
-        else if (c == 3) update();
-        else if (c == 4) del();
-        else if (c == 5) search();
-        else if (c == 6) break;
-    }
+    int choice;
+
+    do {
+        printf("\n===== Library Book Records Manager =====\n");
+        printf("1. Add Book Record\n");
+        printf("2. View All Books\n");
+        printf("3. Update Book Record\n");
+        printf("4. Delete Book Record\n");
+        printf("5. Search Book\n");
+        printf("6. Exit\n");
+        printf("Choose an option: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: addBook(); break;
+            case 2: viewBooks(); break;
+            case 3: updateBook(); break;
+            case 4: deleteBook(); break;
+            case 5: searchBook(); break;
+        }
+
+    } while (choice != 6);
+
     return 0;
 }

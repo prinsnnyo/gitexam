@@ -1,109 +1,242 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#define MAX 1000
+#include <string.h>
+
+#define MAX_EMPLOYEES 100
+#define FILE_NAME "payroll.txt"
 
 typedef struct {
-    char id[10], name[50], pos[30];
-    float basic, allow, deduct, tax, net;
-} Emp;
+    char empID[10];
+    char name[50];
+    char position[30];
+    float basicSalary;
+    float allowances;
+    float deductions;
+    float tax;
+    float netSalary;
+} Employee;
 
-Emp e[MAX]; int n;
+Employee employees[MAX_EMPLOYEES];
+int empCount = 0;
 
-void load() {
-    FILE *f = fopen("payroll.txt", "r"); n = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^|]|%[^|]|%f|%f|%f|%f|%f\n", e[n].id, e[n].name, e[n].pos,
-           &e[n].basic, &e[n].allow, &e[n].deduct, &e[n].tax, &e[n].net) == 8) n++;
-    fclose(f);
-}
+// 🔍 Load employees from file
+void loadEmployees() {
+    FILE* file = fopen(FILE_NAME, "r");
+    if (!file) return;
 
-void save() {
-    FILE *f = fopen("payroll.txt", "w");
-    for (int i = 0; i < n; i++)
-        fprintf(f, "%s|%s|%s|%.2f|%.2f|%.2f|%.2f|%.2f\n", e[i].id, e[i].name, e[i].pos,
-                e[i].basic, e[i].allow, e[i].deduct, e[i].tax, e[i].net);
-    fclose(f);
-}
-
-void calc(Emp *x) {
-    float gross = x->basic + x->allow - x->deduct;
-    x->tax = gross * 0.10;
-    x->net = gross - x->tax;
-}
-
-void add() {
-    load(); Emp t;
-    printf("ID: "); gets(t.id);
-    for (int i = 0; i < n; i++) if (!strcmp(e[i].id, t.id)) { printf("ID exists.\n"); return; }
-    printf("Name: "); gets(t.name);
-    printf("Position: "); gets(t.pos);
-    printf("Basic: "); scanf("%f", &t.basic);
-    printf("Allowances: "); scanf("%f", &t.allow);
-    printf("Deductions: "); scanf("%f", &t.deduct); getchar();
-    if (t.basic < 0 || t.allow < 0 || t.deduct < 0) { printf("Invalid salary.\n"); return; }
-    calc(&t);
-    FILE *f = fopen("payroll.txt", "a");
-    fprintf(f, "%s|%s|%s|%.2f|%.2f|%.2f|%.2f|%.2f\n", t.id, t.name, t.pos,
-            t.basic, t.allow, t.deduct, t.tax, t.net);
-    fclose(f); printf("Added!\n");
-}
-
-void view() {
-    load(); if (!n) { printf("No records.\n"); return; }
-    printf("ID Name Position Net\n-----------------------------\n");
-    for (int i = 0; i < n; i++)
-        printf("%s %s %s %.2f\n", e[i].id, e[i].name, e[i].pos, e[i].net);
-}
-
-void update() {
-    load(); char id[10]; printf("ID to update: "); gets(id);
-    for (int i = 0; i < n; i++) {
-        if (!strcmp(e[i].id, id)) {
-            printf("New Basic: "); scanf("%f", &e[i].basic);
-            printf("New Allow: "); scanf("%f", &e[i].allow);
-            printf("New Deduct: "); scanf("%f", &e[i].deduct); getchar();
-            if (e[i].basic < 0 || e[i].allow < 0 || e[i].deduct < 0) { printf("Invalid.\n"); return; }
-            calc(&e[i]); save(); printf("Updated!\n"); return;
-        }
+    empCount = 0;
+    while (fscanf(file, "%[^|]|%[^|]|%[^|]|%f|%f|%f|%f|%f\n",
+                  employees[empCount].empID,
+                  employees[empCount].name,
+                  employees[empCount].position,
+                  &employees[empCount].basicSalary,
+                  &employees[empCount].allowances,
+                  &employees[empCount].deductions,
+                  &employees[empCount].tax,
+                  &employees[empCount].netSalary) == 8) {
+        empCount++;
     }
-    printf("ID not found.\n");
+
+    fclose(file);
 }
 
-void del() {
-    load(); char id[10]; printf("ID to delete: "); gets(id);
-    for (int i = 0; i < n; i++) {
-        if (!strcmp(e[i].id, id)) {
-            for (int j = i; j < n - 1; j++) e[j] = e[j + 1];
-            n--; save(); printf("Deleted!\n"); return;
-        }
+// 💾 Save employees to file
+void saveEmployees() {
+    FILE* file = fopen(FILE_NAME, "w");
+    for (int i = 0; i < empCount; i++) {
+        fprintf(file, "%s|%s|%s|%.2f|%.2f|%.2f|%.2f|%.2f\n",
+                employees[i].empID,
+                employees[i].name,
+                employees[i].position,
+                employees[i].basicSalary,
+                employees[i].allowances,
+                employees[i].deductions,
+                employees[i].tax,
+                employees[i].netSalary);
     }
-    printf("ID not found.\n");
+    fclose(file);
 }
 
-void payslip() {
-    load(); char id[10]; printf("ID to search: "); gets(id);
-    for (int i = 0; i < n; i++) {
-        if (!strcmp(e[i].id, id)) {
-            float gross = e[i].basic + e[i].allow - e[i].deduct;
-            printf("\nPayslip for %s\n----------------------\n", e[i].name);
-            printf("Basic: %.2f\nAllow: %.2f\nDeduct: %.2f\n", e[i].basic, e[i].allow, e[i].deduct);
-            printf("Gross: %.2f\nTax: %.2f\nNet: %.2f\n----------------------\n",
-                   gross, e[i].tax, e[i].net);
+// ✅ Check for unique ID
+int isUniqueID(char* id) {
+    for (int i = 0; i < empCount; i++) {
+        if (strcmp(employees[i].empID, id) == 0) return 0;
+    }
+    return 1;
+}
+
+// ➕ Add employee
+void addEmployee() {
+    Employee e;
+    printf("Enter Employee ID: ");
+    scanf("%s", e.empID);
+    if (!isUniqueID(e.empID)) {
+        printf("Error: Employee ID already exists.\n");
+        return;
+    }
+
+    getchar(); // clear newline
+    printf("Enter Full Name: ");
+    fgets(e.name, sizeof(e.name), stdin);
+    e.name[strcspn(e.name, "\n")] = '\0';
+
+    printf("Enter Position: ");
+    fgets(e.position, sizeof(e.position), stdin);
+    e.position[strcspn(e.position, "\n")] = '\0';
+
+    printf("Enter Basic Salary: ");
+    scanf("%f", &e.basicSalary);
+    printf("Enter Allowances: ");
+    scanf("%f", &e.allowances);
+    printf("Enter Deductions: ");
+    scanf("%f", &e.deductions);
+
+    if (e.basicSalary < 0 || e.allowances < 0 || e.deductions < 0) {
+        printf("Error: Salary values must be non-negative.\n");
+        return;
+    }
+
+    float gross = e.basicSalary + e.allowances - e.deductions;
+    e.tax = gross * 0.10;
+    e.netSalary = gross - e.tax;
+
+    employees[empCount++] = e;
+    saveEmployees();
+    printf("Record added successfully!\n");
+}
+
+// 📋 View all employees
+void viewEmployees() {
+    loadEmployees();
+    if (empCount == 0) {
+        printf("No records found.\n");
+        return;
+    }
+
+    printf("\n--------------------------------------------------------\n");
+    printf("ID     Name                Position           Net Salary\n");
+    printf("--------------------------------------------------------\n");
+    for (int i = 0; i < empCount; i++) {
+        printf("%-6s %-18s %-18s %.2f\n",
+               employees[i].empID,
+               employees[i].name,
+               employees[i].position,
+               employees[i].netSalary);
+    }
+    printf("--------------------------------------------------------\n");
+}
+
+// ✏️ Update employee
+void updateEmployee() {
+    char id[10];
+    loadEmployees();
+    printf("Enter Employee ID to update: ");
+    scanf("%s", id);
+
+    for (int i = 0; i < empCount; i++) {
+        if (strcmp(employees[i].empID, id) == 0) {
+            printf("Enter new Basic Salary: ");
+            scanf("%f", &employees[i].basicSalary);
+            printf("Enter new Allowances: ");
+            scanf("%f", &employees[i].allowances);
+            printf("Enter new Deductions: ");
+            scanf("%f", &employees[i].deductions);
+
+            if (employees[i].basicSalary < 0 || employees[i].allowances < 0 || employees[i].deductions < 0) {
+                printf("Error: Salary values must be non-negative.\n");
+                return;
+            }
+
+            float gross = employees[i].basicSalary + employees[i].allowances - employees[i].deductions;
+            employees[i].tax = gross * 0.10;
+            employees[i].netSalary = gross - employees[i].tax;
+
+            saveEmployees();
+            printf("Record updated successfully!\n");
             return;
         }
     }
-    printf("ID not found.\n");
+
+    printf("Employee ID not found.\n");
 }
 
-int main() {
-    int c;
-    while (1) {
-        printf("\n1.Add 2.View 3.Update 4.Delete 5.Payslip 6.Exit\nChoose: ");
-        scanf("%d", &c); getchar();
-        if (c == 1) add(); else if (c == 2) view();
-        else if (c == 3) update(); else if (c == 4) del();
-        else if (c == 5) payslip(); else break;
+// ❌ Delete employee
+void deleteEmployee() {
+    char id[10];
+    loadEmployees();
+    printf("Enter Employee ID to delete: ");
+    scanf("%s", id);
+
+    int found = 0;
+    for (int i = 0; i < empCount; i++) {
+        if (strcmp(employees[i].empID, id) == 0) {
+            for (int j = i; j < empCount - 1; j++) {
+                employees[j] = employees[j + 1];
+            }
+            empCount--;
+            found = 1;
+            break;
+        }
     }
+
+    if (found) {
+        saveEmployees();
+        printf("Record deleted successfully!\n");
+    } else {
+        printf("Employee ID not found.\n");
+    }
+}
+
+// 🧾 Generate payslip
+void generatePayslip() {
+    char id[10];
+    loadEmployees();
+    printf("Enter Employee ID: ");
+    scanf("%s", id);
+
+    for (int i = 0; i < empCount; i++) {
+        if (strcmp(employees[i].empID, id) == 0) {
+            float gross = employees[i].basicSalary + employees[i].allowances - employees[i].deductions;
+            printf("\nPayslip for %s\n", employees[i].name);
+            printf("--------------------------------\n");
+            printf("Basic Salary : %.2f\n", employees[i].basicSalary);
+            printf("Allowances   : %.2f\n", employees[i].allowances);
+            printf("Deductions   : %.2f\n", employees[i].deductions);
+            printf("Gross Salary : %.2f\n", gross);
+            printf("Tax (10%%)     : %.2f\n", employees[i].tax);
+            printf("Net Salary   : %.2f\n", employees[i].netSalary);
+            printf("--------------------------------\n");
+            return;
+        }
+    }
+
+    printf("Employee ID not found.\n");
+}
+
+// 📌 Main menu
+int main() {
+    int choice;
+
+    do {
+        printf("\nEmployee Payroll Management System\n");
+        printf("1. Add Employee Record\n");
+        printf("2. View All Records\n");
+        printf("3. Update Employee Record\n");
+        printf("4. Delete Employee Record\n");
+        printf("5. Search & Generate Payslip\n");
+        printf("6. Exit\n");
+        printf("Enter choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: addEmployee(); break;
+            case 2: viewEmployees(); break;
+            case 3: updateEmployee(); break;
+            case 4: deleteEmployee(); break;
+            case 5: generatePayslip(); break;
+        }
+
+    } while (choice != 6);
+
     return 0;
 }

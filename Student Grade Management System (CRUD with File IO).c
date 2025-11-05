@@ -1,77 +1,181 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#define MAX 1000
+#include <string.h>
 
-typedef struct { char id[10], name[50], course[30]; int grade; } Student;
-Student s[MAX]; int n;
+#define MAX_STUDENTS 100
+#define FILE_NAME "grades.txt"
 
-void load() {
-    FILE *f = fopen("grades.txt", "r"); n = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^,],%[^,],%[^,],%d\n", s[n].id, s[n].name, s[n].course, &s[n].grade) == 4) n++;
-    fclose(f);
-}
+typedef struct {
+    char studentID[10];
+    char name[50];
+    char course[30];
+    int finalGrade;
+} Student;
 
-void save() {
-    FILE *f = fopen("grades.txt", "w");
-    for (int i = 0; i < n; i++)
-        fprintf(f, "%s,%s,%s,%d\n", s[i].id, s[i].name, s[i].course, s[i].grade);
-    fclose(f);
-}
+Student students[MAX_STUDENTS];
+int studentCount = 0;
 
-int find(char *id) {
-    for (int i = 0; i < n; i++)
-        if (!strcmp(s[i].id, id)) return i;
-    return -1;
-}
+// 🔍 Load students from file
+void loadStudents() {
+    FILE* file = fopen(FILE_NAME, "r");
+    if (!file) return;
 
-void add() {
-    load(); Student t;
-    printf("ID: "); gets(t.id);
-    if (find(t.id) >= 0) { printf("ID exists.\n"); return; }
-    printf("Name: "); gets(t.name);
-    printf("Course: "); gets(t.course);
-    printf("Grade (0–100): "); scanf("%d"); getchar();
-    if (t.grade < 0 || t.grade > 100) { printf("Invalid grade.\n"); return; }
-    FILE *f = fopen("grades.txt", "a");
-    fprintf(f, "%s,%s,%s,%d\n", t.id, t.name, t.course, t.grade);
-    fclose(f); printf("Record added!\n");
-}
-
-void view() {
-    load(); if (!n) { printf("No records.\n"); return; }
-    printf("ID Name Course Grade\n-----------------------------\n");
-    for (int i = 0; i < n; i++)
-        printf("%s %s %s %d\n", s[i].id, s[i].name, s[i].course, s[i].grade);
-}
-
-void update() {
-    load(); char id[10]; printf("ID to update: "); gets(id);
-    int i = find(id);
-    if (i < 0) { printf("Not found.\n"); return; }
-    printf("New Grade (0–100): "); scanf("%d"); getchar();
-    if (s[i].grade < 0 || s[i].grade > 100) { printf("Invalid.\n"); return; }
-    scanf("%d", &s[i].grade); getchar();
-    save(); printf("Updated!\n");
-}
-
-void del() {
-    load(); char id[10]; printf("ID to delete: "); gets(id);
-    int i = find(id);
-    if (i < 0) { printf("Not found.\n"); return; }
-    for (int j = i; j < n - 1; j++) s[j] = s[j + 1];
-    n--; save(); printf("Deleted!\n");
-}
-
-int main() {
-    int c;
-    while (1) {
-        printf("\nGrade Manager\n1.Add 2.View 3.Update 4.Delete 5.Exit\nChoose: ");
-        scanf("%d"); getchar();
-        if (c == 1) add(); else if (c == 2) view();
-        else if (c == 3) update(); else if (c == 4) del();
-        else break;
+    studentCount = 0;
+    while (fscanf(file, "%[^,],%[^,],%[^,],%d\n",
+                  students[studentCount].studentID,
+                  students[studentCount].name,
+                  students[studentCount].course,
+                  &students[studentCount].finalGrade) == 4) {
+        studentCount++;
     }
+
+    fclose(file);
+}
+
+// 💾 Save students to file
+void saveStudents() {
+    FILE* file = fopen(FILE_NAME, "w");
+    for (int i = 0; i < studentCount; i++) {
+        fprintf(file, "%s,%s,%s,%d\n",
+                students[i].studentID,
+                students[i].name,
+                students[i].course,
+                students[i].finalGrade);
+    }
+    fclose(file);
+}
+
+// ✅ Check for unique Student ID
+int isUniqueID(char* id) {
+    for (int i = 0; i < studentCount; i++) {
+        if (strcmp(students[i].studentID, id) == 0) return 0;
+    }
+    return 1;
+}
+
+// ➕ Add student
+void addStudent() {
+    Student s;
+    printf("Enter Student ID: ");
+    scanf("%s", s.studentID);
+    if (!isUniqueID(s.studentID)) {
+        printf("Error: Student ID already exists.\n");
+        return;
+    }
+
+    getchar(); // clear newline
+    printf("Enter Name: ");
+    fgets(s.name, sizeof(s.name), stdin);
+    s.name[strcspn(s.name, "\n")] = '\0';
+
+    printf("Enter Course: ");
+    fgets(s.course, sizeof(s.course), stdin);
+    s.course[strcspn(s.course, "\n")] = '\0';
+
+    printf("Enter Final Grade (0–100): ");
+    scanf("%d", &s.finalGrade);
+    if (s.finalGrade < 0 || s.finalGrade > 100) {
+        printf("Error: Final grade must be between 0 and 100.\n");
+        return;
+    }
+
+    students[studentCount++] = s;
+    saveStudents();
+    printf("Record added successfully!\n");
+}
+
+// 📋 View all students
+void viewStudents() {
+    loadStudents();
+    if (studentCount == 0) {
+        printf("No records found.\n");
+        return;
+    }
+
+    printf("\nStudentID Name                Course     FinalGrade\n");
+    printf("------------------------------------------------------\n");
+    for (int i = 0; i < studentCount; i++) {
+        printf("%-10s %-20s %-10s %d\n",
+               students[i].studentID,
+               students[i].name,
+               students[i].course,
+               students[i].finalGrade);
+    }
+}
+
+// ✏️ Update student
+void updateStudent() {
+    char id[10];
+    loadStudents();
+    printf("Enter Student ID to update: ");
+    scanf("%s", id);
+
+    for (int i = 0; i < studentCount; i++) {
+        if (strcmp(students[i].studentID, id) == 0) {
+            printf("Enter new Final Grade (0–100): ");
+            scanf("%d", &students[i].finalGrade);
+            if (students[i].finalGrade < 0 || students[i].finalGrade > 100) {
+                printf("Error: Final grade must be between 0 and 100.\n");
+                return;
+            }
+            saveStudents();
+            printf("Record updated successfully!\n");
+            return;
+        }
+    }
+
+    printf("Student ID not found.\n");
+}
+
+// ❌ Delete student
+void deleteStudent() {
+    char id[10];
+    loadStudents();
+    printf("Enter Student ID to delete: ");
+    scanf("%s", id);
+
+    int found = 0;
+    for (int i = 0; i < studentCount; i++) {
+        if (strcmp(students[i].studentID, id) == 0) {
+            for (int j = i; j < studentCount - 1; j++) {
+                students[j] = students[j + 1];
+            }
+            studentCount--;
+            found = 1;
+            break;
+        }
+    }
+
+    if (found) {
+        saveStudents();
+        printf("Record deleted successfully!\n");
+    } else {
+        printf("Student ID not found.\n");
+    }
+}
+
+// 📌 Main menu
+int main() {
+    int choice;
+
+    do {
+        printf("\n===== Student Grade Management System =====\n");
+        printf("1. Add Record\n");
+        printf("2. View Records\n");
+        printf("3. Update Record\n");
+        printf("4. Delete Record\n");
+        printf("5. Exit\n");
+        printf("Choose an option: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: addStudent(); break;
+            case 2: viewStudents(); break;
+            case 3: updateStudent(); break;
+            case 4: deleteStudent(); break;
+        }
+
+    } while (choice != 5);
+
     return 0;
 }

@@ -1,15 +1,104 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-void clean(char *s) { int j=0; for(int i=0;s[i];i++) if(isalpha(s[i])) s[j++]=tolower(s[i]); s[j]='\0'; }
-int main() {
-    char a[100], b[100]; printf("1=Pal, 2=Ana: "); int c; scanf("%d\n", &c);
-    gets(a); if (c==1) { clean(a); int l=strlen(a), f=1; for(int i=0;i<l/2;i++) if(a[i]!=a[l-1-i]) f=0;
-        printf(f?"Palindrome\n":"Not Palindrome\n");
-    } else { gets(b); clean(a); clean(b); int ca[26]={0}, cb[26]={0};
-        for(int i=0;a[i];i++) ca[a[i]-'a']++; for(int i=0;b[i];i++) cb[b[i]-'a']++;
-        int f=1; for(int i=0;i<26;i++) if(ca[i]!=cb[i]) f=0;
-        printf(f?"Anagrams\n":"Not Anagrams\n");
+#include <stdlib.h>
+
+#define MAX_LEN 200
+
+// 🔧 Normalize string: remove spaces/punctuation, convert to lowercase
+void normalize(char* input, char* output) {
+    int j = 0;
+    for (int i = 0; input[i]; i++) {
+        if (isalpha(input[i])) {
+            output[j++] = tolower(input[i]);
+        }
     }
+    output[j] = '\0';
+}
+
+// 🔁 Reverse string
+void reverse(char* str, char* reversed) {
+    int len = strlen(str);
+    for (int i = 0; i < len; i++) {
+        reversed[i] = str[len - 1 - i];
+    }
+    reversed[len] = '\0';
+}
+
+// 🔍 Check if palindrome
+int isPalindrome(char* input) {
+    char cleaned[MAX_LEN], reversed[MAX_LEN];
+    normalize(input, cleaned);
+    reverse(cleaned, reversed);
+    return strcmp(cleaned, reversed) == 0;
+}
+
+// 🔁 Sort characters in string
+void sortString(char* str) {
+    int len = strlen(str);
+    for (int i = 0; i < len - 1; i++) {
+        for (int j = i + 1; j < len; j++) {
+            if (str[i] > str[j]) {
+                char temp = str[i];
+                str[i] = str[j];
+                str[j] = temp;
+            }
+        }
+    }
+}
+
+// 🔍 Check if anagram
+int isAnagram(char* input1, char* input2) {
+    char cleaned1[MAX_LEN], cleaned2[MAX_LEN];
+    normalize(input1, cleaned1);
+    normalize(input2, cleaned2);
+    sortString(cleaned1);
+    sortString(cleaned2);
+    return strcmp(cleaned1, cleaned2) == 0;
+}
+
+// 📌 Main menu loop
+int main() {
+    int choice;
+    char input1[MAX_LEN], input2[MAX_LEN];
+
+    do {
+        printf("\n===== Palindrome & Anagram Tool =====\n");
+        printf("1. Palindrome Checker\n");
+        printf("2. Anagram Checker\n");
+        printf("3. Exit\n");
+        printf("Choose an option: ");
+        scanf("%d", &choice);
+        getchar(); // clear newline
+
+        if (choice == 1) {
+            printf("Enter word/phrase: ");
+            fgets(input1, sizeof(input1), stdin);
+            input1[strcspn(input1, "\n")] = '\0';
+
+            if (isPalindrome(input1)) {
+                printf("Output: Palindrome\n");
+            } else {
+                printf("Output: Not Palindrome\n");
+            }
+
+        } else if (choice == 2) {
+            printf("Enter first word/phrase: ");
+            fgets(input1, sizeof(input1), stdin);
+            input1[strcspn(input1, "\n")] = '\0';
+
+            printf("Enter second word/phrase: ");
+            fgets(input2, sizeof(input2), stdin);
+            input2[strcspn(input2, "\n")] = '\0';
+
+            if (isAnagram(input1, input2)) {
+                printf("Output: Anagrams\n");
+            } else {
+                printf("Output: Not Anagrams\n");
+            }
+        }
+
+    } while (choice != 3);
+
     return 0;
 }

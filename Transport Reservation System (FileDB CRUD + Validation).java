@@ -1,161 +1,222 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+import java.io.*;
+import java.util.*;
 
-#define MAX 100
+class Trip {
+    String tripID, route, date, time;
+    int totalSeats, availableSeats;
+    double fare;
 
-typedef struct {
-    char tripID[10], route[50], date[15], time[10];
-    int totalSeats, availableSeats, fare;
-} Trip;
+    public Trip(String tripID, String route, String date, String time, int totalSeats, double fare) {
+        this.tripID = tripID;
+        this.route = route;
+        this.date = date;
+        this.time = time;
+        this.totalSeats = totalSeats;
+        this.availableSeats = totalSeats;
+        this.fare = fare;
+    }
 
-typedef struct {
-    char resID[10], name[50], contact[15], tripID[10];
+    public String toCSV() {
+        return tripID + "," + route + "," + date + "," + time + "," + totalSeats + "," + availableSeats + "," + fare;
+    }
+
+    public void display() {
+        System.out.printf("%s - %s - %s %s - %d Seats Available - Fare: %.2f%n",
+                tripID, route, date, time, availableSeats, fare);
+    }
+}
+
+class Reservation {
+    String reservationID, name, contact, tripID;
     int seatNo;
-    char status[10]; // Paid/Unpaid
-} Reservation;
+    String paymentStatus;
 
-Trip trips[MAX]; int tripCount = 0;
-Reservation res[MAX]; int resCount = 0;
+    public Reservation(String reservationID, String name, String contact, String tripID, int seatNo, String paymentStatus) {
+        this.reservationID = reservationID;
+        this.name = name;
+        this.contact = contact;
+        this.tripID = tripID;
+        this.seatNo = seatNo;
+        this.paymentStatus = paymentStatus;
+    }
 
-void loadTrips() {
-    FILE *f = fopen("trips.txt", "r"); tripCount = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^|]|%[^|]|%[^|]|%d|%d|%d\n",
-           trips[tripCount].tripID, trips[tripCount].route, trips[tripCount].date,
-           trips[tripCount].time, &trips[tripCount].totalSeats,
-           &trips[tripCount].availableSeats, &trips[tripCount].fare) == 7)
-        tripCount++;
-    fclose(f);
+    public String toCSV() {
+        return reservationID + "," + name + "," + contact + "," + tripID + "," + seatNo + "," + paymentStatus;
+    }
+
+    public void printTicket(Trip trip) {
+        System.out.println("\n--- Transport Reservation Ticket ---");
+        System.out.println("ReservationID: " + reservationID);
+        System.out.println("Passenger: " + name);
+        System.out.println("Trip: " + trip.route);
+        System.out.println("Date: " + trip.date);
+        System.out.println("Time: " + trip.time);
+        System.out.println("Seat: " + seatNo);
+        System.out.println("Fare: " + trip.fare);
+        System.out.println("Payment: " + paymentStatus);
+        System.out.println("------------------------------------");
+    }
 }
 
-void saveTrips() {
-    FILE *f = fopen("trips.txt", "w");
-    for (int i = 0; i < tripCount; i++)
-        fprintf(f, "%s|%s|%s|%s|%d|%d|%d\n", trips[i].tripID, trips[i].route,
-                trips[i].date, trips[i].time, trips[i].totalSeats,
-                trips[i].availableSeats, trips[i].fare);
-    fclose(f);
-}
+class TransportReservationSystem {
+    static List<Trip> trips = new ArrayList<>();
+    static List<Reservation> reservations = new ArrayList<>();
+    static Scanner scanner = new Scanner(System.in);
 
-void loadRes() {
-    FILE *f = fopen("res.txt", "r"); resCount = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^|]|%[^|]|%[^|]|%d|%[^\n]\n",
-           res[resCount].resID, res[resCount].name, res[resCount].contact,
-           res[resCount].tripID, &res[resCount].seatNo, res[resCount].status) == 6)
-        resCount++;
-    fclose(f);
-}
+    public static void main(String[] args) {
+        loadTrips();
+        loadReservations();
+        int choice;
+        do {
+            System.out.println("\nTransport Reservation System");
+            System.out.println("1. Add Trip");
+            System.out.println("2. View Trips");
+            System.out.println("3. Book Reservation");
+            System.out.println("4. Cancel Reservation");
+            System.out.println("5. View Reservations");
+            System.out.println("6. Search Reservation");
+            System.out.println("7. Exit");
+            System.out.print("Enter choice: ");
+            choice = scanner.nextInt();
+            scanner.nextLine();
 
-void saveRes() {
-    FILE *f = fopen("res.txt", "w");
-    for (int i = 0; i < resCount; i++)
-        fprintf(f, "%s|%s|%s|%s|%d|%s\n", res[i].resID, res[i].name, res[i].contact,
-                res[i].tripID, res[i].seatNo, res[i].status);
-    fclose(f);
-}
+            switch (choice) {
+                case 1 -> addTrip();
+                case 2 -> viewTrips();
+                case 3 -> bookReservation();
+                case 4 -> cancelReservation();
+                case 5 -> viewReservations();
+                case 6 -> searchReservation();
+            }
+        } while (choice != 7);
 
-int findTrip(char *id) {
-    for (int i = 0; i < tripCount; i++)
-        if (strcmp(trips[i].tripID, id) == 0) return i;
-    return -1;
-}
+        saveTrips();
+        saveReservations();
+    }
 
-int seatTaken(char *tripID, int seat) {
-    for (int i = 0; i < resCount; i++)
-        if (strcmp(res[i].tripID, tripID) == 0 && res[i].seatNo == seat)
-            return 1;
-    return 0;
-}
+    static void addTrip() {
+        System.out.print("TripID: ");
+        String id = scanner.nextLine();
+        System.out.print("Route: ");
+        String route = scanner.nextLine();
+        System.out.print("Date (YYYY-MM-DD): ");
+        String date = scanner.nextLine();
+        System.out.print("Time (HH:MM): ");
+        String time = scanner.nextLine();
+        System.out.print("TotalSeats: ");
+        int seats = scanner.nextInt();
+        System.out.print("Fare: ");
+        double fare = scanner.nextDouble();
+        trips.add(new Trip(id, route, date, time, seats, fare));
+        System.out.println("Trip added successfully.");
+    }
 
-void addTrip() {
-    Trip t;
-    printf("TripID: "); scanf("%s", t.tripID);
-    if (findTrip(t.tripID) >= 0) { printf("Trip exists.\n"); return; }
-    printf("Route: "); getchar(); gets(t.route);
-    printf("Date: "); gets(t.date);
-    printf("Time: "); gets(t.time);
-    printf("TotalSeats: "); scanf("%d", &t.totalSeats);
-    printf("Fare: "); scanf("%d", &t.fare);
-    t.availableSeats = t.totalSeats;
-    trips[tripCount++] = t;
-    saveTrips();
-    printf("Trip added successfully.\n");
-}
+    static void viewTrips() {
+        for (Trip t : trips) t.display();
+    }
 
-void viewTrips() {
-    for (int i = 0; i < tripCount; i++)
-        printf("%s - %s - %d Seats Available - Fare: %d\n",
-               trips[i].tripID, trips[i].route, trips[i].availableSeats, trips[i].fare);
-}
-
-void bookSeat() {
-    Reservation r;
-    printf("ReservationID: "); scanf("%s", r.resID);
-    printf("Name: "); getchar(); gets(r.name);
-    printf("Contact: "); gets(r.contact);
-    for (int i = 0; r.contact[i]; i++)
-        if (r.contact[i] < '0' || r.contact[i] > '9') { printf("Invalid contact.\n"); return; }
-    printf("TripID: "); gets(r.tripID);
-    int i = findTrip(r.tripID);
-    if (i < 0) { printf("Trip not found.\n"); return; }
-    if (trips[i].availableSeats <= 0) { printf("No seats available.\n"); return; }
-    printf("SeatNo: "); scanf("%d", &r.seatNo); getchar();
-    if (seatTaken(r.tripID, r.seatNo)) { printf("Seat taken.\n"); return; }
-    printf("PaymentStatus: "); gets(r.status);
-    res[resCount++] = r;
-    trips[i].availableSeats--;
-    saveRes(); saveTrips();
-    printf("Reservation successful. Ticket generated.\n");
-    printf("--- Transport Reservation Ticket ---\n");
-    printf("ReservationID: %s\nPassenger: %s\nTrip: %s\nDate: %s\nTime: %s\nSeat: %d\nFare: %d\nPayment: %s\n",
-           r.resID, r.name, trips[i].route, trips[i].date, trips[i].time, r.seatNo, trips[i].fare, r.status);
-    printf("------------------------------------\n");
-}
-
-void cancelRes() {
-    char id[10]; printf("Cancel Reservation: "); scanf("%s", id);
-    for (int i = 0; i < resCount; i++) {
-        if (strcmp(res[i].resID, id) == 0) {
-            int t = findTrip(res[i].tripID);
-            if (t >= 0) trips[t].availableSeats++;
-            for (int j = i; j < resCount - 1; j++) res[j] = res[j + 1];
-            resCount--; saveRes(); saveTrips();
-            printf("Reservation cancelled. Seat %d is now available.\n", res[i].seatNo);
+    static void bookReservation() {
+        viewTrips();
+        System.out.print("ReservationID: ");
+        String rid = scanner.nextLine();
+        System.out.print("Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Contact: ");
+        String contact = scanner.nextLine();
+        if (!contact.matches("\\d+")) {
+            System.out.println("Error: Contact must be numeric.");
             return;
         }
+        System.out.print("TripID: ");
+        String tid = scanner.nextLine();
+        Trip trip = trips.stream().filter(t -> t.tripID.equals(tid)).findFirst().orElse(null);
+        if (trip == null || trip.availableSeats <= 0) {
+            System.out.println("Error: Trip not found or no seats available.");
+            return;
+        }
+        System.out.print("SeatNo: ");
+        int seat = scanner.nextInt();
+        scanner.nextLine();
+        if (reservations.stream().anyMatch(r -> r.tripID.equals(tid) && r.seatNo == seat)) {
+            System.out.println("Error: Seat already booked.");
+            return;
+        }
+        System.out.print("PaymentStatus (Paid/Unpaid): ");
+        String status = scanner.nextLine();
+        reservations.add(new Reservation(rid, name, contact, tid, seat, status));
+        trip.availableSeats--;
+        System.out.println("Reservation successful. Ticket generated.");
+        reservations.get(reservations.size() - 1).printTicket(trip);
     }
-    printf("Reservation not found.\n");
-}
 
-void viewResByTrip() {
-    char id[10]; printf("TripID: "); scanf("%s", id);
-    for (int i = 0; i < resCount; i++)
-        if (strcmp(res[i].tripID, id) == 0)
-            printf("%s - %s - Seat: %d - %s\n", res[i].resID, res[i].name, res[i].seatNo, res[i].status);
-}
-
-void searchRes() {
-    char q[50]; printf("Search Name or ResID: "); getchar(); gets(q);
-    for (int i = 0; i < resCount; i++)
-        if (strstr(res[i].name, q) || strstr(res[i].resID, q))
-            printf("%s - %s - Trip: %s - Seat: %d\n", res[i].resID, res[i].name, res[i].tripID, res[i].seatNo);
-}
-
-int main() {
-    loadTrips(); loadRes();
-    int ch;
-    while (1) {
-        printf("\n1.Add Trip 2.View Trips 3.Book 4.Cancel 5.View Res by Trip 6.Search Res 7.Exit\nChoose: ");
-        scanf("%d", &ch);
-        if (ch == 1) addTrip();
-        else if (ch == 2) viewTrips();
-        else if (ch == 3) bookSeat();
-        else if (ch == 4) cancelRes();
-        else if (ch == 5) viewResByTrip();
-        else if (ch == 6) searchRes();
-        else break;
+    static void cancelReservation() {
+        System.out.print("Enter ReservationID to cancel: ");
+        String rid = scanner.nextLine();
+        Reservation r = reservations.stream().filter(res -> res.reservationID.equals(rid)).findFirst().orElse(null);
+        if (r != null) {
+            Trip trip = trips.stream().filter(t -> t.tripID.equals(r.tripID)).findFirst().orElse(null);
+            if (trip != null) trip.availableSeats++;
+            reservations.remove(r);
+            System.out.println("Reservation cancelled. Seat " + r.seatNo + " is now available.");
+        } else {
+            System.out.println("Reservation not found.");
+        }
     }
-    return 0;
+
+    static void viewReservations() {
+        for (Reservation r : reservations) {
+            System.out.printf("%s - %s - Trip: %s - Seat: %d - Payment: %s%n",
+                    r.reservationID, r.name, r.tripID, r.seatNo, r.paymentStatus);
+        }
+    }
+
+    static void searchReservation() {
+        System.out.print("Search by (1-ID, 2-Name): ");
+        int opt = scanner.nextInt();
+        scanner.nextLine();
+        if (opt == 1) {
+            System.out.print("Enter ReservationID: ");
+            String rid = scanner.nextLine();
+            reservations.stream()
+                    .filter(r -> r.reservationID.equals(rid))
+                    .forEach(r -> System.out.println("Found: " + r.name + " - Trip: " + r.tripID));
+        } else {
+            System.out.print("Enter Name: ");
+            String name = scanner.nextLine();
+            reservations.stream()
+                    .filter(r -> r.name.equalsIgnoreCase(name))
+                    .forEach(r -> System.out.println("Found: " + r.reservationID + " - Trip: " + r.tripID));
+        }
+    }
+
+    static void loadTrips() {
+        try (Scanner file = new Scanner(new File("trips.csv"))) {
+            while (file.hasNextLine()) {
+                String[] p = file.nextLine().split(",");
+                trips.add(new Trip(p[0], p[1], p[2], p[3], Integer.parseInt(p[4]), Double.parseDouble(p[6])));
+                trips.get(trips.size() - 1).availableSeats = Integer.parseInt(p[5]);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    static void saveTrips() {
+        try (PrintWriter out = new PrintWriter("trips.csv")) {
+            for (Trip t : trips) out.println(t.toCSV());
+        } catch (Exception ignored) {}
+    }
+
+    static void loadReservations() {
+        try (Scanner file = new Scanner(new File("reservations.csv"))) {
+            while (file.hasNextLine()) {
+                String[] p = file.nextLine().split(",");
+                reservations.add(new Reservation(p[0], p[1], p[2], p[3], Integer.parseInt(p[4]), p[5]));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    static void saveReservations() {
+        try (PrintWriter out = new PrintWriter("reservations.csv")) {
+            for (Reservation r : reservations) out.println(r.toCSV());
+        } catch (Exception ignored) {}
+    }
 }

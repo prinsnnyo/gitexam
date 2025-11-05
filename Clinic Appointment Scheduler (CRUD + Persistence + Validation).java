@@ -1,202 +1,228 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
+import java.io.*;
+import java.util.*;
 
-#define MAX 100
+class Doctor {
+    String doctorID, name, specialization;
+    List<String> availableSlots;
 
-typedef struct {
-    char id[10], name[50], spec[30], slots[5][10]; // up to 5 slots
-    int slotCount;
-} Doctor;
-
-typedef struct {
-    char id[10], name[50], contact[15];
-} Patient;
-
-typedef struct {
-    char id[10], patID[10], docID[10], date[15], slot[10], status[15];
-} Appointment;
-
-Doctor docs[MAX]; int docCount = 0;
-Patient pats[MAX]; int patCount = 0;
-Appointment apps[MAX]; int appCount = 0;
-
-void loadDoctors() {
-    FILE *f = fopen("doctors.txt", "r"); docCount = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^|]|%[^|]|%d|%[^|]|%[^|]|%[^|]|%[^|]|%[^\n]\n",
-           docs[docCount].id, docs[docCount].name, docs[docCount].spec, &docs[docCount].slotCount,
-           docs[docCount].slots[0], docs[docCount].slots[1], docs[docCount].slots[2],
-           docs[docCount].slots[3], docs[docCount].slots[4]) >= 4)
-        docCount++;
-    fclose(f);
-}
-
-void saveDoctors() {
-    FILE *f = fopen("doctors.txt", "w");
-    for (int i = 0; i < docCount; i++) {
-        fprintf(f, "%s|%s|%s|%d", docs[i].id, docs[i].name, docs[i].spec, docs[i].slotCount);
-        for (int j = 0; j < docs[i].slotCount; j++)
-            fprintf(f, "|%s", docs[i].slots[j]);
-        fprintf(f, "\n");
+    public Doctor(String doctorID, String name, String specialization, List<String> slots) {
+        this.doctorID = doctorID;
+        this.name = name;
+        this.specialization = specialization;
+        this.availableSlots = slots;
     }
-    fclose(f);
-}
 
-void loadPatients() {
-    FILE *f = fopen("patients.txt", "r"); patCount = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^|]|%[^\n]\n", pats[patCount].id, pats[patCount].name, pats[patCount].contact) == 3)
-        patCount++;
-    fclose(f);
-}
-
-void savePatients() {
-    FILE *f = fopen("patients.txt", "w");
-    for (int i = 0; i < patCount; i++)
-        fprintf(f, "%s|%s|%s\n", pats[i].id, pats[i].name, pats[i].contact);
-    fclose(f);
-}
-
-void loadAppointments() {
-    FILE *f = fopen("appointments.txt", "r"); appCount = 0;
-    if (!f) return;
-    while (fscanf(f, "%[^|]|%[^|]|%[^|]|%[^|]|%[^|]|%[^\n]\n",
-           apps[appCount].id, apps[appCount].patID, apps[appCount].docID,
-           apps[appCount].date, apps[appCount].slot, apps[appCount].status) == 6)
-        appCount++;
-    fclose(f);
-}
-
-void saveAppointments() {
-    FILE *f = fopen("appointments.txt", "w");
-    for (int i = 0; i < appCount; i++)
-        fprintf(f, "%s|%s|%s|%s|%s|%s\n", apps[i].id, apps[i].patID, apps[i].docID,
-                apps[i].date, apps[i].slot, apps[i].status);
-    fclose(f);
-}
-
-int findDoctor(char *id) {
-    for (int i = 0; i < docCount; i++)
-        if (strcmp(docs[i].id, id) == 0) return i;
-    return -1;
-}
-
-int findPatient(char *id) {
-    for (int i = 0; i < patCount; i++)
-        if (strcmp(pats[i].id, id) == 0) return i;
-    return -1;
-}
-
-int slotBooked(char *docID, char *date, char *slot) {
-    for (int i = 0; i < appCount; i++)
-        if (strcmp(apps[i].docID, docID) == 0 &&
-            strcmp(apps[i].date, date) == 0 &&
-            strcmp(apps[i].slot, slot) == 0 &&
-            strcmp(apps[i].status, "Scheduled") == 0)
-            return 1;
-    return 0;
-}
-
-void addDoctor() {
-    Doctor d;
-    printf("DoctorID: "); scanf("%s", d.id);
-    if (findDoctor(d.id) >= 0) { printf("ID exists.\n"); return; }
-    printf("Name: "); getchar(); gets(d.name);
-    printf("Specialization: "); gets(d.spec);
-    printf("Number of Slots (max 5): "); scanf("%d", &d.slotCount);
-    for (int i = 0; i < d.slotCount; i++) {
-        printf("Slot %d: ", i + 1); scanf("%s", d.slots[i]);
+    public String toCSV() {
+        return doctorID + "," + name + "," + specialization + "," + String.join(";", availableSlots);
     }
-    docs[docCount++] = d;
-    saveDoctors();
-    printf("Doctor added successfully.\n");
 }
 
-void registerPatient() {
-    Patient p;
-    printf("PatientID: "); scanf("%s", p.id);
-    if (findPatient(p.id) >= 0) { printf("ID exists.\n"); return; }
-    printf("Name: "); getchar(); gets(p.name);
-    printf("Contact: "); gets(p.contact);
-    for (int i = 0; p.contact[i]; i++)
-        if (p.contact[i] < '0' || p.contact[i] > '9') { printf("Invalid contact.\n"); return; }
-    pats[patCount++] = p;
-    savePatients();
-    printf("Patient registered successfully.\n");
+class Patient {
+    String patientID, name, contact;
+
+    public Patient(String patientID, String name, String contact) {
+        this.patientID = patientID;
+        this.name = name;
+        this.contact = contact;
+    }
+
+    public String toCSV() {
+        return patientID + "," + name + "," + contact;
+    }
 }
 
-void bookAppointment() {
-    Appointment a;
-    printf("AppointmentID: "); scanf("%s", a.id);
-    for (int i = 0; i < appCount; i++)
-        if (strcmp(apps[i].id, a.id) == 0) { printf("ID exists.\n"); return; }
-    printf("PatientID: "); scanf("%s", a.patID);
-    if (findPatient(a.patID) < 0) { printf("Patient not found.\n"); return; }
-    printf("DoctorID: "); scanf("%s", a.docID);
-    int d = findDoctor(a.docID);
-    if (d < 0) { printf("Doctor not found.\n"); return; }
-    printf("Date (YYYY-MM-DD): "); scanf("%s", a.date);
-    printf("TimeSlot: "); scanf("%s", a.slot);
-    if (slotBooked(a.docID, a.date, a.slot)) { printf("Slot already booked.\n"); return; }
-    strcpy(a.status, "Scheduled");
-    apps[appCount++] = a;
-    saveAppointments();
-    printf("Appointment scheduled successfully.\n");
+class Appointment {
+    String appointmentID, patientID, doctorID, date, timeSlot, status;
+
+    public Appointment(String appointmentID, String patientID, String doctorID, String date, String timeSlot, String status) {
+        this.appointmentID = appointmentID;
+        this.patientID = patientID;
+        this.doctorID = doctorID;
+        this.date = date;
+        this.timeSlot = timeSlot;
+        this.status = status;
+    }
+
+    public String toCSV() {
+        return appointmentID + "," + patientID + "," + doctorID + "," + date + "," + timeSlot + "," + status;
+    }
 }
 
-void cancelAppointment() {
-    char id[10]; printf("Cancel Appointment: "); scanf("%s", id);
-    for (int i = 0; i < appCount; i++) {
-        if (strcmp(apps[i].id, id) == 0) {
-            strcpy(apps[i].status, "Cancelled");
-            saveAppointments();
-            printf("Appointment cancelled. Slot is now available.\n");
+class ClinicScheduler {
+    static List<Doctor> doctors = new ArrayList<>();
+    static List<Patient> patients = new ArrayList<>();
+    static List<Appointment> appointments = new ArrayList<>();
+    static Scanner scanner = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        loadDoctors();
+        loadPatients();
+        loadAppointments();
+        int choice;
+        do {
+            System.out.println("\nClinic Appointment Scheduler");
+            System.out.println("1. Add Doctor");
+            System.out.println("2. Register Patient");
+            System.out.println("3. Book Appointment");
+            System.out.println("4. Cancel Appointment");
+            System.out.println("5. View Doctor Schedule");
+            System.out.println("6. Mark Appointment Completed");
+            System.out.println("7. Exit");
+            System.out.print("Enter choice: ");
+            choice = scanner.nextInt(); scanner.nextLine();
+
+            switch (choice) {
+                case 1 -> addDoctor();
+                case 2 -> registerPatient();
+                case 3 -> bookAppointment();
+                case 4 -> cancelAppointment();
+                case 5 -> viewSchedule();
+                case 6 -> completeAppointment();
+            }
+        } while (choice != 7);
+
+        saveDoctors();
+        savePatients();
+        saveAppointments();
+    }
+
+    static void addDoctor() {
+        System.out.print("DoctorID: ");
+        String id = scanner.nextLine();
+        System.out.print("Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Specialization: ");
+        String spec = scanner.nextLine();
+        System.out.print("Available Slots (comma-separated): ");
+        String[] slots = scanner.nextLine().split(",");
+        doctors.add(new Doctor(id, name, spec, Arrays.asList(slots)));
+        System.out.println("Doctor added successfully.");
+    }
+
+    static void registerPatient() {
+        System.out.print("PatientID: ");
+        String id = scanner.nextLine();
+        System.out.print("Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Contact: ");
+        String contact = scanner.nextLine();
+        if (!contact.matches("\\d+")) {
+            System.out.println("Error: Contact must be numeric.");
             return;
         }
+        patients.add(new Patient(id, name, contact));
+        System.out.println("Patient registered successfully.");
     }
-    printf("Appointment not found.\n");
-}
 
-void viewSchedule() {
-    char docID[10]; printf("DoctorID: "); scanf("%s", docID);
-    int d = findDoctor(docID);
-    if (d < 0) { printf("Doctor not found.\n"); return; }
-    printf("Appointments for %s\n", docs[d].name);
-    for (int i = 0; i < docs[d].slotCount; i++) {
-        int booked = 0;
-        for (int j = 0; j < appCount; j++) {
-            if (strcmp(apps[j].docID, docID) == 0 &&
-                strcmp(apps[j].slot, docs[d].slots[i]) == 0 &&
-                strcmp(apps[j].status, "Scheduled") == 0) {
-                int p = findPatient(apps[j].patID);
-                printf("%s - Booked (%s)\n", docs[d].slots[i], pats[p].name);
-                booked = 1;
-                break;
+    static void bookAppointment() {
+        System.out.print("AppointmentID: ");
+        String aid = scanner.nextLine();
+        System.out.print("PatientID: ");
+        String pid = scanner.nextLine();
+        System.out.print("DoctorID: ");
+        String did = scanner.nextLine();
+        System.out.print("Date (YYYY-MM-DD): ");
+        String date = scanner.nextLine();
+        System.out.print("TimeSlot: ");
+        String slot = scanner.nextLine();
+
+        if (appointments.stream().anyMatch(a -> a.doctorID.equals(did) && a.date.equals(date) && a.timeSlot.equals(slot) && a.status.equals("Scheduled"))) {
+            System.out.println("Error: Slot already booked.");
+            return;
+        }
+
+        appointments.add(new Appointment(aid, pid, did, date, slot, "Scheduled"));
+        System.out.println("Appointment scheduled successfully.");
+    }
+
+    static void cancelAppointment() {
+        System.out.print("Enter AppointmentID to cancel: ");
+        String aid = scanner.nextLine();
+        for (Appointment a : appointments) {
+            if (a.appointmentID.equals(aid)) {
+                a.status = "Cancelled";
+                System.out.println("Appointment cancelled. Slot is now available.");
+                return;
             }
         }
-        if (!booked) printf("%s - Available\n", docs[d].slots[i]);
+        System.out.println("Appointment not found.");
     }
-}
 
-int main() {
-    loadDoctors(); loadPatients(); loadAppointments();
-    int ch;
-    while (1) {
-        printf("\n1.Add Doctor 2.Register Patient 3.Book 4.Cancel 5.View Schedule 6.Exit\nChoose: ");
-        scanf("%d", &ch);
-        if (ch == 1)
-            addDoctor();
-        else if (ch == 2)
-            registerPatient();
-        else if (ch == 3)
-            bookAppointment();
-        else if (ch == 4)
-            cancelAppointment();
-        else if (ch == 5)
-            viewSchedule();
-        else
-            break;
+    static void viewSchedule() {
+        System.out.print("Enter DoctorID: ");
+        String did = scanner.nextLine();
+        Doctor doc = doctors.stream().filter(d -> d.doctorID.equals(did)).findFirst().orElse(null);
+        if (doc == null) {
+            System.out.println("Doctor not found.");
+            return;
+        }
+        System.out.println("Appointments for " + doc.name);
+        for (String slot : doc.availableSlots) {
+            Appointment a = appointments.stream().filter(ap -> ap.doctorID.equals(did) && ap.timeSlot.equals(slot) && ap.status.equals("Scheduled")).findFirst().orElse(null);
+            if (a != null) {
+                Patient p = patients.stream().filter(pa -> pa.patientID.equals(a.patientID)).findFirst().orElse(null);
+                System.out.println(slot + " - Booked (" + (p != null ? p.name : "Unknown") + ")");
+            } else {
+                System.out.println(slot + " - Available");
+            }
+        }
     }
-    return 0;
+
+    static void completeAppointment() {
+        System.out.print("Enter AppointmentID to mark completed: ");
+        String aid = scanner.nextLine();
+        for (Appointment a : appointments) {
+            if (a.appointmentID.equals(aid)) {
+                a.status = "Completed";
+                System.out.println("Appointment marked as completed.");
+                return;
+            }
+        }
+        System.out.println("Appointment not found.");
+    }
+
+    static void loadDoctors() {
+        try (Scanner file = new Scanner(new File("doctors.csv"))) {
+            while (file.hasNextLine()) {
+                String[] p = file.nextLine().split(",");
+                doctors.add(new Doctor(p[0], p[1], p[2], Arrays.asList(p[3].split(";"))));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    static void saveDoctors() {
+        try (PrintWriter out = new PrintWriter("doctors.csv")) {
+            for (Doctor d : doctors) out.println(d.toCSV());
+        } catch (Exception ignored) {}
+    }
+
+    static void loadPatients() {
+        try (Scanner file = new Scanner(new File("patients.csv"))) {
+            while (file.hasNextLine()) {
+                String[] p = file.nextLine().split(",");
+                patients.add(new Patient(p[0], p[1], p[2]));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    static void savePatients() {
+        try (PrintWriter out = new PrintWriter("patients.csv")) {
+            for (Patient p : patients) out.println(p.toCSV());
+        } catch (Exception ignored) {}
+    }
+
+    static void loadAppointments() {
+        try (Scanner file = new Scanner(new File("appointments.csv"))) {
+            while (file.hasNextLine()) {
+                String[] p = file.nextLine().split(",");
+                appointments.add(new Appointment(p[0], p[1], p[2], p[3], p[4], p[5]));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    static void saveAppointments() {
+        try (PrintWriter out = new PrintWriter("appointments.csv")) {
+            for (Appointment a : appointments) out.println(a.toCSV());
+        } catch (Exception ignored) {}
+    }
 }
